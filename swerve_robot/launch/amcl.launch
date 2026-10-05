@@ -1,0 +1,57 @@
+<launch>
+  <!-- Gazebo仿真必须开启仿真时间 -->
+  <param name="use_sim_time" value="true" />
+
+  <!-- ========== map_server：加载建好的静态地图【修复！用args传文件】 ========== -->
+  <node pkg="map_server" type="map_server" name="map_server" output="screen"
+    args="/home/lm/dachang_ws/src/swerve_robot/maps/gmapping_map.yaml"/>
+
+  <!-- ========== AMCL 粒子滤波定位节点 ========== -->
+  <node pkg="amcl" type="amcl" name="amcl" output="screen">
+    <remap from="scan" to="/scan"/>
+    <!-- 坐标系配置 -->
+    <param name="global_frame_id" value="map"/>
+    <param name="odom_frame_id" value="odom"/>
+    <param name="base_frame_id" value="base_link"/>
+
+    <!-- 粒子参数，仿真场景，粒子数量适中 -->
+    <param name="particles" value="50"/>
+    <param name="max_particles" value="100"/>
+    <param name="min_particles" value="20"/>
+
+    <!-- 扫描匹配阈值 -->
+    <param name="update_min_d" value="0.2"/>
+    <param name="update_min_a" value="0.2"/>
+
+    <!-- 重采样参数 -->
+    <param name="resample_interval" value="1"/>
+    <param name="resample_threshold" value="0.5"/>
+
+    <!-- 激光模型 -->
+    <param name="laser_z_hit" value="0.95"/>
+    <param name="laser_z_short" value="0.05"/>
+    <param name="laser_z_max" value="0.05"/>
+    <param name="laser_z_rand" value="0.05"/>
+    <param name="laser_sigma_hit" value="0.2"/>
+    <param name="laser_lambda_short" value="0.1"/>
+    <param name="laser_max_range" value="8.0"/>
+    <param name="laser_min_range" value="0.1"/>
+    <param name="laser_model_type" value="likelihood_field"/>
+
+    <!-- 里程计模型：全向舵轮必须选omni -->
+    <param name="odom_model_type" value="omni"/>
+    <param name="odom_alpha1" value="0.1"/>
+    <param name="odom_alpha2" value="0.1"/>
+    <param name="odom_alpha3" value="0.1"/>
+    <param name="odom_alpha4" value="0.1"/>
+    <param name="odom_alpha5" value="0.1"/>
+
+    <!-- 初始粒子位姿 -->
+    <param name="initial_pose_x" value="0.0"/>
+    <param name="initial_pose_y" value="0.0"/>
+    <param name="initial_pose_a" value="0.0"/>
+  </node>
+
+  <!-- RViz可视化 -->
+  <node pkg="rviz" type="rviz" name="rviz_amcl" output="screen"/>
+</launch>

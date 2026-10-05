@@ -1,0 +1,165 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="four_wheel_swerve_chassis">
+<xacro:include filename="$(find swerve_robot)/urdf/four_wheel_swerve_laser.xacro"/>
+
+<!-- 参数：单位 cm，代码内部转为米 -->
+<xacro:property name="chassis_length_cm" value="30.0"/>
+<xacro:property name="chassis_width_cm" value="30.0"/>
+<xacro:property name="chassis_thickness_cm" value="10.0"/>
+<xacro:property name="wheel_radius_cm" value="7.5"/>
+<xacro:property name="wheel_width_cm" value="2.0"/>
+<!-- 转为URDF标准 m -->
+<xacro:property name="chassis_len" value="${chassis_length_cm / 100.0}"/>
+<xacro:property name="chassis_wid" value="${chassis_width_cm / 100.0}"/>
+<xacro:property name="chassis_thick" value="${chassis_thickness_cm / 100.0}"/>
+<xacro:property name="wheel_r" value="${wheel_radius_cm / 100.0}"/>
+<xacro:property name="wheel_w" value="${wheel_width_cm / 100.0}"/>
+<!-- 转向关节限位 ±90° 弧度 -->
+<xacro:property name="steer_min" value="-3.1416"/>
+<xacro:property name="steer_max" value="3.1416"/>
+<!-- 底盘底面到转向关节中心z距离，留间隙防止碰撞 -->
+<xacro:property name="z_gap" value="0.01"/>
+<xacro:property name="steering_z_pos" value="${-chassis_thick/2 - z_gap}"/>
+
+<!-- ===================== 宏：转向关节传动（Position） ===================== -->
+<xacro:macro name="steer_transmission" params="joint_name">
+  <transmission name="${joint_name}_trans">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="${joint_name}">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="${joint_name}_motor">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+</xacro:macro>
+
+<!-- ===================== 宏：驱动关节传动（Velocity） ===================== -->
+<xacro:macro name="drive_transmission" params="joint_name">
+  <transmission name="${joint_name}_trans">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="${joint_name}">
+      <hardwareInterface>hardware_interface/VelocityJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="${joint_name}_motor">
+      <hardwareInterface>hardware_interface/VelocityJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+</xacro:macro>
+
+<!-- 单舵轮宏 swerve模块 -->
+<xacro:macro name="swerve_module" params="prefix x_pos y_pos">
+<!-- 转向支架连杆 -->
+<link name="${prefix}_steering_link">
+<visual>
+<origin xyz="0 0 0" rpy="0 0 0"/>
+<geometry>
+<box size="0.015 0.015 0.03"/>
+</geometry>
+<material name="blue">
+<color rgba="0 0 1 0.8"/>
+</material>
+</visual>
+<!-- <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="0.015 0.015 0.03"/>
+        </geometry>
+      </collision> -->
+<inertial>
+<origin xyz="0 0 0"/>
+<mass value="0.05"/>
+<inertia ixx="1e-5" ixy="0" ixz="0" iyy="1e-5" iyz="0" izz="1e-5"/>
+</inertial>
+</link>
+<!-- 转向关节：revolute，带±90°限位，控制轮子摆角 -->
+<joint name="${prefix}_steering_joint" type="revolute">
+<parent link="base_link"/>
+<child link="${prefix}_steering_link"/>
+<origin xyz="${x_pos} ${y_pos} ${steering_z_pos}" rpy="0 0 0"/>
+<axis xyz="0 0 1"/>
+<limit lower="${steer_min}" upper="${steer_max}" effort="100" velocity="3.14"/>
+</joint>
+<!-- 车轮连杆：cylinder默认沿Z，rpy绕X转90°，圆柱轴线变为Y轴，轮子正常立起 -->
+<link name="${prefix}_wheel_link">
+<visual>
+<origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
+<geometry>
+<cylinder radius="${wheel_r}" length="${wheel_w}"/>
+</geometry>
+<material name="black">
+<color rgba="0 0 0 0.9"/>
+</material>
+</visual>
+<collision>
+<origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
+<geometry>
+<cylinder radius="${wheel_r}" length="${wheel_w}"/>
+</geometry>
+</collision>
+<inertial>
+<origin xyz="0 0 0"/>
+<mass value="0.1"/>
+<inertia ixx="1e-4" ixy="0" ixz="0" iyy="1e-4" iyz="0" izz="1e-4"/>
+</inertial>
+</link>
+<!-- 驱动关节 continuous：✅ 支持无限自转，无角度限制，轮子滚动 -->
+<joint name="${prefix}_drive_joint" type="continuous">
+<parent link="${prefix}_steering_link"/>
+<child link="${prefix}_wheel_link"/>
+<origin xyz="0 0 ${-wheel_r}" rpy="0 0 0"/>
+<axis xyz="0 1 0"/>
+</joint>
+</xacro:macro>
+
+<!-- 底盘本体 base_link -->
+<link name="base_link">
+<visual>
+<origin xyz="0 0 0" rpy="0 0 0"/>
+<geometry>
+<box size="${chassis_len} ${chassis_wid} ${chassis_thick}"/>
+</geometry>
+<material name="gray">
+<color rgba="0.4 0.4 0.4 0.8"/>
+</material>
+</visual>
+<collision>
+<origin xyz="0 0 0" rpy="0 0 0"/>
+<geometry>
+<box size="${chassis_len} ${chassis_wid} ${chassis_thick}"/>
+</geometry>
+</collision>
+<inertial>
+<origin xyz="0 0 0"/>
+<mass value="2.0"/>
+<inertia ixx="0.01" ixy="0" ixz="0" iyy="0.02" iyz="0" izz="0.015"/>
+</inertial>
+</link>
+
+<!-- 实例化四个舵轮 -->
+<xacro:swerve_module prefix="front_left" x_pos="${chassis_len/2}" y_pos="${chassis_wid/2}"/>
+<xacro:swerve_module prefix="front_right" x_pos="${chassis_len/2}" y_pos="${-chassis_wid/2}"/>
+<xacro:swerve_module prefix="rear_left" x_pos="${-chassis_len/2}" y_pos="${chassis_wid/2}"/>
+<xacro:swerve_module prefix="rear_right" x_pos="${-chassis_len/2}" y_pos="${-chassis_wid/2}"/>
+
+<!-- ===================== 添加8组传动 ===================== -->
+<xacro:steer_transmission joint_name="front_left_steering_joint"/>
+<xacro:steer_transmission joint_name="front_right_steering_joint"/>
+<xacro:steer_transmission joint_name="rear_left_steering_joint"/>
+<xacro:steer_transmission joint_name="rear_right_steering_joint"/>
+
+<xacro:drive_transmission joint_name="front_left_drive_joint"/>
+<xacro:drive_transmission joint_name="front_right_drive_joint"/>
+<xacro:drive_transmission joint_name="rear_left_drive_joint"/>
+<xacro:drive_transmission joint_name="rear_right_drive_joint"/>
+
+<!-- Gazebo ros_control 插件（ROS1） -->
+<gazebo>
+<plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">
+<robotNamespace>/</robotNamespace>
+</plugin>
+</gazebo>
+
+</robot>

@@ -1,0 +1,58 @@
+<?xml version="1.0"?>
+<launch>
+
+
+  <!-- ==================== 参数 ==================== -->
+  <arg name="world_name" default="/home/lm/dachang_ws/src/my_robot_gazebo/worlds/smart_community.world"/>
+  <arg name="paused" default="false"/>
+  <arg name="use_sim_time" default="true"/>
+  <arg name="gui" default="true"/>
+  <arg name="headless" default="false"/>
+  <arg name="debug" default="false"/>
+  <arg name="verbose" default="false"/>
+  <arg name="extra_gazebo_args" default=""/>
+<!-- turtlebot3_simulations/turtlebot3_gazebo/worlds/turtlebot3_house.world -->
+  <!-- ==================== 模型路径 ==================== -->
+  <env name="GAZEBO_MODEL_PATH" value="$(find my_robot_gazebo)/models:$(optenv GAZEBO_MODEL_PATH)"/>
+<!-- turtlebot3_simulations/turtlebot3_gazebo/worlds/turtlebot3_house.world -->
+  <!-- ==================== 启动 Gazebo ==================== -->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(arg world_name)"/>
+    <arg name="paused" value="$(arg paused)"/>
+    <arg name="use_sim_time" value="$(arg use_sim_time)"/>
+    <arg name="gui" value="$(arg gui)"/>
+    <arg name="headless" value="$(arg headless)"/>
+    <arg name="debug" value="$(arg debug)"/>
+    <arg name="verbose" value="$(arg verbose)"/>
+    <arg name="extra_gazebo_args" value="$(arg extra_gazebo_args)"/>
+  </include>
+  <!-- ==================== 加载机器人模型 ==================== -->
+  <param name="robot_description"
+         command="$(find xacro)/xacro $(find swerve_robot)/urdf/four_wheel_swerve.xacro"/>
+
+  <!-- 发布关节 TF -->
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"
+        output="screen"/>
+
+  <!-- 将模型生成到 Gazebo（z=0.135 使车轮正好落在地面上，避免陷入地面） -->
+  <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" output="screen"
+        args="-param robot_description -urdf -model four_wheel_swerve -z 0.5"/>
+
+  <!-- ==================== 加载并启动控制器 ==================== -->
+  <rosparam file="$(find swerve_robot)/config/swerve_control.yaml" command="load"/>
+
+  <node name="controller_spawner" pkg="controller_manager" type="spawner" output="screen"
+        args="joint_state_controller
+              front_left_steer_pos
+              front_right_steer_pos
+              rear_left_steer_pos
+              rear_right_steer_pos
+              front_left_drive_vel
+              front_right_drive_vel
+              rear_left_drive_vel
+              rear_right_drive_vel"/>
+
+  <!-- ==================== 启动舵轮运动学控制节点 ==================== -->
+  <node name="swerve_control_node" pkg="swerve_robot" type="swerve_control_node" output="screen"/>
+  <node name="swerve_odom_node" pkg="swerve_robot" type="swerve_odom_node" output="screen"/>
+</launch>

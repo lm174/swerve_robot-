@@ -1,0 +1,56 @@
+<launch>
+  <!-- Gazebo仿真必须开启仿真时间 -->
+  <param name="use_sim_time" value="true" />
+
+  <!-- Gmapping核心节点 slam_gmapping -->
+  <node pkg="gmapping" type="slam_gmapping" name="slam_gmapping" output="screen">
+    <!-- 话题映射：雷达scan -->
+    <remap from="scan" to="/scan"/>
+
+    <!-- 坐标系配置，和你舵轮匹配 -->
+    <param name="map_frame" value="map"/>
+    <param name="odom_frame" value="odom"/>
+    <param name="base_frame" value="base_link"/>
+
+    <!-- 地图分辨率 0.05m，和cartographer保持一致 -->
+    <param name="delta" value="0.05"/>
+
+    <!-- 激光参数，根据你的雷达修改 -->
+    <param name="maxUrange" value="8.0"/>
+    <param name="maxRange" value="8.0"/>
+    <param name="sigma" value="0.05"/>
+    <param name="kernelSize" value="1"/>
+    <param name="lsigma" value="0.075"/>
+    <param name="lskip" value="0"/>
+    <param name="minimumScore" value="100"/>
+
+    <!-- 粒子数量，小场景30足够，粒子越多越耗CPU -->
+    <param name="particles" value="30"/>
+
+    <!-- 触发地图更新条件：移动0.5m 或者旋转0.436rad(25度)才更新地图 -->
+    <param name="linearUpdate" value="0.5"/>
+    <param name="angularUpdate" value="0.436"/>
+    <param name="map_update_interval" value="2.0"/>
+
+    <!-- 搜索迭代参数 -->
+    <param name="temporalUpdate" value="-1.0"/>
+    <param name="resampleThreshold" value="0.5"/>
+    <param name="iterations" value="5"/>
+    <param name="astep" value="0.05"/>
+    <param name="lstep" value="0.05"/>
+
+    <!-- 地图初始边界，建图时自动扩展，不用手动改大 -->
+    <param name="xmin" value="-10.0"/>
+    <param name="ymin" value="-10.0"/>
+    <param name="xmax" value="10.0"/>
+    <param name="ymax" value="10.0"/>
+
+    <param name="srr" value="0.1"/>
+    <param name="srt" value="0.2"/>
+    <param name="str" value="0.1"/>
+    <param name="stt" value="0.2"/>
+  </node>
+
+  <!-- RVIZ可视化，加载gmapping建图显示 -->
+  <node pkg="rviz" type="rviz" name="rviz" output="screen"/>
+</launch>
